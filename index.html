@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnapChain - Interactive Photostrip & Tag Preview</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Playfair Display, Fredoka, & Plus Jakarta Sans -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,900;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        snapMaroon: '#70111A',
+                        snapRed: '#8B1E2B',
+                        snapCrimson: '#B82535',
+                        snapCream: '#FAF0E6',
+                        snapPaper: '#F5EBE6',
+                        snapBeige: '#E8D8CE',
+                        snapDark: '#2C1810',
+                        snapCatBlue: '#7C93B3'
+                    },
+                    fontFamily: {
+                        playfair: ['Playfair Display', 'serif'],
+                        fredoka: ['Fredoka', 'sans-serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #FAF0E6;
+            background-image: radial-gradient(#70111A 0.5px, transparent 0.5px), radial-gradient(#70111A 0.5px, #FAF0E6 0.5px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            background-opacity: 0.05;
+            min-height: 100vh;
+        }
+
+        /* Gingham Pattern Ribbon Border */
+        .gingham-bg {
+            background-color: #ffffff;
+            background-image:
+                linear-gradient(90deg, rgba(139, 30, 43, 0.15) 50%, transparent 50%),
+                linear-gradient(rgba(139, 30, 43, 0.15) 50%, transparent 50%);
+            background-size: 16px 16px;
+        }
+
+        /* Stamp Border Effect */
+        .stamp-border {
+            box-shadow: 0 10px 30px rgba(112, 17, 26, 0.15);
+            border: 8px solid #8B1E2B;
+            outline: 2px dashed #FAF0E6;
+            outline-offset: -5px;
+        }
+
+        .retro-badge {
+            clip-path: polygon(10% 0%, 90% 0%, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0% 90%, 0% 10%);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #FAF0E6;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #8B1E2B;
+            border-radius: 10px;
+        }
+
+        /* ===== FRAME GALLERY STYLES ===== */
+        .frame-gallery-scroll {
+            max-height: 340px;
+            overflow-y: auto;
+            padding-right: 4px;
+            scrollbar-width: thin;
+            scrollbar-color: #8B1E2B #FAF0E6;
+        }
+
+        .frame-gallery-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .frame-gallery-scroll::-webkit-scrollbar-thumb {
+            background: #8B1E2B;
+            border-radius: 10px;
+        }
+
+        .frame-thumb-btn {
+    position: relative;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 3px solid transparent;
+    cursor: pointer;
+    background: #f5ebe6;
+    transition: all 0.22s cubic-bezier(.4, 0, .2, 1);
+    width: 100%;
+    height: auto;
+    display: block;
+    padding: 0;
+}
+
+.frame-thumb-btn img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    pointer-events: none;
+}
+        .frame-thumb-btn:hover {
+            border-color: #B82535;
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 6px 24px rgba(112, 17, 26, 0.18);
+        }
+
+        .frame-thumb-btn.active {
+            border-color: #70111A;
+            box-shadow: 0 0 0 3px #FAF0E6, 0 0 0 6px #70111A;
+        }
+
+        .frame-thumb-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(0deg, rgba(44, 24, 16, 0.85) 0%, transparent 100%);
+            color: #FAF0E6;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: center;
+            padding: 10px 4px 4px;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            pointer-events: none;
+        }
+
+        .frame-thumb-btn.active .frame-thumb-label {
+            background: linear-gradient(0deg, rgba(112, 17, 26, 0.95) 0%, transparent 100%);
+        }
+
+        /* Active checkmark badge */
+        .frame-thumb-btn.active::after {
+            content: "✓";
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 18px;
+            height: 18px;
+            background: #70111A;
+            color: #FAF0E6;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 18px;
+            text-align: center;
+        }
+
+        /* Tab pill styles */
+        .frame-tab-btn {
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.18s;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+
+        .frame-tab-btn.active {
+            background: #70111A;
+            color: #FAF0E6;
+            border-color: #70111A;
+        }
+
+        .frame-tab-btn:not(.active) {
+            background: white;
+            color: #70111A;
+            border-color: #E8D8CE;
+        }
+
+        .frame-tab-btn:not(.active):hover {
+            border-color: #70111A;
+        }
+
+        /* Empty state */
+        .frame-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 16px;
+            color: #8B6B61;
+            text-align: center;
+            gap: 10px;
+        }
+
+        /* Loading skeleton */
+        .frame-skeleton {
+    background: linear-gradient(90deg, #f0ddd5 25%, #e8c8ba 50%, #f0ddd5 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 14px;
+    aspect-ratio: 4 / 5;
+}
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* Frame selected info bar */
+        .frame-info-bar {
+            background: linear-gradient(90deg, #70111A 0%, #8B1E2B 100%);
+            color: #FAF0E6;
+            border-radius: 12px;
+            padding: 8px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        /* Upload area */
+        .custom-upload-zone {
+            border: 2px dashed #E8D8CE;
+            border-radius: 16px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(245, 235, 230, 0.6);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .custom-upload-zone:hover {
+            border-color: #8B1E2B;
+            background: rgba(245, 235, 230, 0.9);
+        }
+
+        /* ===== SCROLLABLE LEFT PANEL ===== */
+        @media (min-width: 1024px) {
+            .left-panel-scroll {
+                max-height: calc(100vh - 100px);
+                overflow-y: auto;
+                scrollbar-width: thin;
+                scrollbar-color: #8B1E2B #FAF0E6;
+            }
+
+            .left-panel-scroll::-webkit-scrollbar {
+                width: 5px;
+            }
+
+            .left-panel-scroll::-webkit-scrollbar-thumb {
+                background: #8B1E2B;
+                border-radius: 10px;
+            }
+
+            .left-panel-scroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+        }
+
+
+
+        /* Detected slots badge */
+        .slots-detected-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            color: #2e7d32;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+            border: 1px solid #a5d6a7;
+            transition: all 0.3s;
+        }
+
+        .slots-detected-badge.warn {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            color: #e65100;
+            border-color: #ffcc80;
+        }
+    </style>
+</head>
+
+<body class="text-snapDark antialiased pb-12">
+
+    <!-- Header / Navbar with Vintage Maroon Theme -->
+    <header class="w-full bg-snapMaroon text-snapCream border-b-4 border-snapCrimson shadow-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 rounded-xl bg-snapCream text-snapMaroon flex items-center justify-center font-playfair font-black text-2xl shadow-inner">
+                    S
+                </div>
+                <div>
+                    <h1 class="font-playfair text-2xl font-bold tracking-wide leading-none text-snapCream">SnapChain
+                    </h1>
+                    <p class="text-[11px] text-snapBeige tracking-wider uppercase font-medium mt-0.5">Interactive
+                        Preview Tool</p>
+                </div>
+            </div>
+            <div class="hidden md:flex items-center gap-3">
+                <span
+                    class="text-xs bg-snapCrimson text-white px-3 py-1.5 rounded-full font-medium border border-red-400 shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-bullhorn text-yellow-300"></i> Open Pre Order • Reseller Custom Keychain
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 pt-6 md:pt-8">
+
+        <!-- Hero Banner Styled like the Poster -->
+        <div
+            class="bg-snapPaper rounded-3xl p-6 md:p-8 border-2 border-snapBeige shadow-md mb-8 relative overflow-hidden">
+            <!-- Decorative Gingham Ribbon Side -->
+            <div class="absolute top-0 right-0 w-24 h-full gingham-bg opacity-40 hidden sm:block"></div>
+
+            <div class="relative z-10 max-w-2xl">
+                <div
+                    class="inline-flex items-center gap-2 bg-snapMaroon text-snapCream text-xs px-3 py-1 rounded-md font-bold uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-camera"></i> Live Mockup Generator
+                </div>
+                <h2 class="font-playfair text-3xl md:text-5xl font-black text-snapMaroon mb-2 leading-tight">
+                    Pratinjau Custom Keychain Kamu ✨
+                </h2>
+                <p class="text-gray-700 text-sm md:text-base leading-relaxed">
+                    Pilih produk (Photostrip 3 Foto atau Photo Tag 1 Foto), atur posisi foto hingga pas, dan unduh hasil
+                    preview untuk langsung dikirimkan ke admin SnapChain!
+                </p>
+            </div>
+        </div>
+
+        <!-- Interactive Layout Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+            <!-- Left Side: Interactive Controls (scrollable on desktop) -->
+            <div
+                class="lg:col-span-7 bg-white rounded-3xl border-2 border-snapBeige shadow-xl lg:sticky lg:top-[76px] lg:self-start">
+                <div class="left-panel-scroll p-6 md:p-7 space-y-6">
+
+                    <!-- Step 1: Mode Product Selection -->
+                    <div>
+                        <label class="font-playfair text-lg font-bold text-snapMaroon flex items-center gap-2 mb-3">
+                            <span
+                                class="w-7 h-7 bg-snapMaroon text-white rounded-full flex items-center justify-center text-xs font-sans">1</span>
+                            Pilih Jenis Produk
+                        </label>
+                        <div class="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory" style="scrollbar-width:thin; scrollbar-color:#8B1E2B #FAF0E6;">
+                            <style>
+                                .product-mode-btn { flex: 0 0 calc(50% - 6px); min-width: 140px; }
+                                @media (min-width: 480px) { .product-mode-btn { flex: 0 0 calc(33.33% - 8px); } }
+                            </style>
+                            <button onclick="setProductMode('photostrip')" id="btnModePhotostrip"
+                                class="product-mode-btn snap-center p-4 rounded-2xl border-2 border-snapMaroon bg-snapPaper text-left transition relative overflow-hidden group shrink-0">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span
+                                            class="font-bold font-fredoka text-snapMaroon block text-base">PHOTOSTRIP</span>
+                                        <span class="text-xs text-gray-500">Custom 3 Foto • 12K</span>
+                                    </div>
+                                    <span
+                                        class="bg-snapCrimson text-white text-[10px] font-bold px-2 py-0.5 rounded-full">POPULAR</span>
+                                </div>
+                            </button>
+                            <button onclick="setProductMode('phototag')" id="btnModePhotoTag"
+                                class="product-mode-btn snap-center p-4 rounded-2xl border-2 border-gray-200 bg-white text-left transition hover:border-snapBeige relative overflow-hidden group shrink-0">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="font-bold font-fredoka text-gray-700 block text-base">PHOTO TAG</span>
+                                        <span class="text-xs text-gray-500">Custom 1 Foto • 7K</span>
+                                    </div>
+                                </div>
+                            </button>
+                            <button onclick="setProductMode('motorcycle')" id="btnModeMotorcycle"
+                                class="product-mode-btn snap-center p-4 rounded-2xl border-2 border-gray-200 bg-white text-left transition hover:border-snapBeige relative overflow-hidden group shrink-0">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="font-bold font-fredoka text-gray-700 block text-base">MOTORCYCLE</span>
+                                        <span class="text-xs text-gray-500">Custom 1 Foto • 10K</span>
+                                    </div>
+                                </div>
+                            </button>
+                            <button onclick="setProductMode('camera')" id="btnModeCamera"
+                                class="product-mode-btn snap-center p-4 rounded-2xl border-2 border-gray-200 bg-white text-left transition hover:border-snapBeige relative overflow-hidden group shrink-0">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="font-bold font-fredoka text-gray-700 block text-base">PHOTO CAMERA</span>
+                                        <span class="text-xs text-gray-500">Custom 1 Foto • 13K</span>
+                                    </div>
+                                </div>
+                            </button>
+                            <button onclick="setProductMode('macrame')" id="btnModeMacrame"
+                                class="product-mode-btn snap-center p-4 rounded-2xl border-2 border-gray-200 bg-white text-left transition hover:border-snapBeige relative overflow-hidden group shrink-0">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="font-bold font-fredoka text-gray-700 block text-base">PHOTO MACRAME</span>
+                                        <span class="text-xs text-gray-500">Custom 1 Foto • 17K</span>
+                                    </div>
+                                </div>
+                            </button>
+                            <button onclick="setProductMode('plasbag')" id="btnModePlasbag"
+                                class="product-mode-btn snap-center p-4 rounded-2xl border-2 border-gray-200 bg-white text-left transition hover:border-snapBeige relative overflow-hidden group shrink-0">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="font-bold font-fredoka text-gray-700 block text-base">PHOTO PLASBAG</span>
+                                        <span class="text-xs text-gray-500">Custom 1 Foto • 17K</span>
+                                    </div>
+                                </div>
+                            </button>
+                            <button onclick="setProductMode('tv')" id="btnModeTV"
+                                class="product-mode-btn snap-center p-4 rounded-2xl border-2 border-gray-200 bg-white text-left transition hover:border-snapBeige relative overflow-hidden group shrink-0">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span class="font-bold font-fredoka text-gray-700 block text-base">PHOTO TV</span>
+                                        <span class="text-xs text-gray-500">Custom 1 Foto • 15K</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="phototagCustomInfo"
+    class="hidden mt-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-3.5 py-2.5 text-xs flex items-start gap-2">
+    <i class="fa-solid fa-circle-info text-amber-700 mt-0.5 shrink-0"></i>
+    <span><strong>Info Photo Tag:</strong> Bisa custom nama bebas (maksimal <strong>8 kata</strong>) — silakan kirimkan teks/nama custom-nya langsung ke admin yaa...</span>
+</div>
+
+                    <div id="macrameRandomInfo"
+    class="hidden mt-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-3.5 py-2.5 text-xs flex items-start gap-2">
+    <i class="fa-solid fa-circle-info text-amber-700 mt-0.5 shrink-0"></i>
+    <span><strong>Info Photo Macrame:</strong> Warna/motif tali macrame dikirim secara <strong>random</strong> sesuai stok.</span>
+</div>
+
+<div id="tvFixedInfo" 
+class="hidden mt-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-3.5 py-2.5 text-xs flex items-start gap-2">
+    <i class="fa-solid fa-circle-info text-amber-700 mt-0.5 shrink-0"></i>
+  <span><strong>Info Photo TV:</strong>Tata letak frame TV sudah paten (sayangnya <strong>tidak bisa request ubah tata letak</strong>). Jadi pastikan ukuran dan rasio foto yang kamu taruh disini sudah sesuai dengan frame.
+</div>
+
+<div id="cameraFixedInfo" 
+class="hidden mt-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl px-3.5 py-2.5 text-xs flex items-start gap-2">
+    <i class="fa-solid fa-circle-info text-amber-700 mt-0.5 shrink-0"></i>
+  <span><strong>Info Photo Camera:</strong>Tata letak frame Kamera sudah paten (sayangnya <strong>tidak bisa request ubah tata letak</strong>). Pastikan ukuran dan rasio foto yang kamu taruh disini sudah sesuai dengan frame.
+</div>
+                    <hr class="border-snapPaper">
+
+                    <!-- Step 2: Pilih Frame dari Folder -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-playfair text-lg font-bold text-snapMaroon flex items-center gap-2">
+                                <span
+                                    class="w-7 h-7 bg-snapMaroon text-white rounded-full flex items-center justify-center text-xs font-sans">2</span>
+                                Pilih Template Frame
+                            </label>
+                            <!-- Frame Count Badge -->
+                            <span id="frameCountBadge"
+                                class="text-[11px] bg-snapPaper text-snapMaroon font-bold px-3 py-1 rounded-full border border-snapBeige hidden">
+                                <i class="fa-solid fa-images mr-1"></i>
+                                <span id="frameCountText">0</span> frame tersedia
+                            </span>
+                        </div>
+
+                        <!-- Filter Tabs (search/sort) -->
+                        <div class="flex items-center gap-2 mb-3" id="frameFilterBar">
+                            <div
+                                class="flex items-center bg-snapPaper rounded-full px-3 py-1.5 gap-2 border border-snapBeige flex-1">
+                                <i class="fa-solid fa-magnifying-glass text-snapMaroon text-xs"></i>
+                                <input type="text" id="frameSearchInput" placeholder="Cari nama frame…"
+                                    oninput="filterFrames(this.value)"
+                                    class="bg-transparent text-xs outline-none w-full text-snapDark placeholder-gray-400 font-medium">
+                            </div>
+                            <button onclick="clearFrameSearch()" id="clearSearchBtn"
+                                class="text-xs bg-white text-snapMaroon border border-snapBeige px-3 py-1.5 rounded-full font-bold hidden hover:bg-snapPaper transition">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+
+                        <!-- Frame Gallery Grid -->
+                        <div class="frame-gallery-scroll" id="frameGalleryScroll">
+                            <!-- Loading skeleton shown while frames load -->
+                            <div id="frameLoadingState" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                                <div class="frame-skeleton"></div>
+                                <div class="frame-skeleton"></div>
+                                <div class="frame-skeleton"></div>
+                                <div class="frame-skeleton" style="opacity:0.6"></div>
+                            </div>
+
+                            <!-- Frame grid (populated by JS) -->
+                            <div id="frameGridContainer" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5 hidden">
+                                <!-- Dynamically inserted frame buttons -->
+                            </div>
+
+                            <!-- Empty state -->
+                            <div id="frameEmptyState" class="hidden frame-empty-state">
+                                <div
+                                    class="w-16 h-16 rounded-2xl bg-snapPaper border-2 border-dashed border-snapBeige flex items-center justify-center">
+                                    <i class="fa-regular fa-folder-open text-2xl text-snapBeige"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-sm text-snapDark mb-1">Belum ada frame</p>
+                                    <p class="text-xs text-gray-500 leading-relaxed">
+                                        Tambahkan file PNG ke folder<br>
+                                        <code
+                                            class="bg-snapPaper px-1.5 py-0.5 rounded text-snapMaroon font-bold">frames/</code>
+                                        di project kamu
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Search no-result state -->
+                            <div id="frameNoResultState" class="hidden frame-empty-state">
+                                <i class="fa-solid fa-filter-circle-xmark text-3xl text-snapBeige"></i>
+                                <div>
+                                    <p class="font-bold text-sm text-snapDark mb-1">Frame tidak ditemukan</p>
+                                    <p class="text-xs text-gray-500">Coba kata kunci lain</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Currently selected frame info bar -->
+                        <div id="frameInfoBar" class="frame-info-bar mt-3 hidden">
+                            <i class="fa-solid fa-layer-group text-yellow-300 shrink-0"></i>
+                            <span class="truncate">
+                                Frame dipilih: <strong id="frameInfoName">—</strong>
+                            </span>
+                            <span id="slotsDetectedBadge" class="slots-detected-badge ml-1 hidden">
+                                <i class="fa-solid fa-crosshairs"></i>
+                                <span id="slotsDetectedText"></span>
+                            </span>
+                            <button onclick="clearFrameSelection()"
+                                class="ml-auto shrink-0 text-[10px] text-snapBeige hover:text-white transition font-bold">
+                                <i class="fa-solid fa-xmark"></i> Hapus
+                            </button>
+                        </div>
+
+                        <!-- Custom PNG Upload Option -->
+                        <div class="custom-upload-zone mt-3"
+                            onclick="document.getElementById('customFrameUpload').click()">
+                            <div
+                                class="w-9 h-9 bg-white rounded-xl border border-snapBeige flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-file-image text-snapMaroon text-sm"></i>
+                            </div>
+                            <div class="text-xs text-gray-600 flex-1">
+                                <span class="font-bold text-snapMaroon block">Upload PNG Frame Sendiri</span>
+                                <span class="text-[11px] text-gray-500">Punya frame custom? Upload PNG-nya di
+                                    sini</span>
+                            </div>
+                            <input type="file" id="customFrameUpload" accept="image/png" class="hidden"
+                                onchange="handleCustomFrameUpload(event)">
+                            <button
+                                class="bg-snapMaroon text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-snapRed transition shrink-0 pointer-events-none">
+                                <i class="fa-solid fa-upload mr-1"></i> Upload
+                            </button>
+                        </div>
+                    </div>
+
+                    <hr class="border-snapPaper">
+
+                    <!-- Step 3: Upload Foto Per Slot -->
+                    <div>
+                        <label class="font-playfair text-lg font-bold text-snapMaroon flex items-center gap-2 mb-3">
+                            <span
+                                class="w-7 h-7 bg-snapMaroon text-white rounded-full flex items-center justify-center text-xs font-sans">3</span>
+                            Upload Foto Pelanggan
+                        </label>
+
+                        <!-- Dynamic Slots Container -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="photoUploadSlots">
+                            <!-- Slot 1 -->
+                            <div
+                                class="bg-snapPaper/80 border-2 border-dashed border-snapBeige rounded-2xl p-3 text-center flex flex-col items-center justify-center">
+                                <span class="text-xs font-bold text-snapMaroon mb-1">Foto 1 (Atas)</span>
+                                <input type="file" id="uploadSlot0" accept="image/*" class="hidden"
+                                    onchange="handlePhotoUpload(event, 0)">
+                                <button onclick="document.getElementById('uploadSlot0').click()"
+                                    class="bg-snapMaroon text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm hover:bg-snapRed transition">
+                                    <i class="fa-solid fa-upload mr-1"></i> Pilih Foto
+                                </button>
+                                <span id="fileName0" class="text-[10px] text-gray-500 mt-1 truncate max-w-[100px]">Belum
+                                    ada foto</span>
+                            </div>
+                            <!-- Slot 2 -->
+                            <div id="slotContainer1"
+                                class="bg-snapPaper/80 border-2 border-dashed border-snapBeige rounded-2xl p-3 text-center flex flex-col items-center justify-center">
+                                <span class="text-xs font-bold text-snapMaroon mb-1">Foto 2 (Tengah)</span>
+                                <input type="file" id="uploadSlot1" accept="image/*" class="hidden"
+                                    onchange="handlePhotoUpload(event, 1)">
+                                <button onclick="document.getElementById('uploadSlot1').click()"
+                                    class="bg-snapMaroon text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm hover:bg-snapRed transition">
+                                    <i class="fa-solid fa-upload mr-1"></i> Pilih Foto
+                                </button>
+                                <span id="fileName1" class="text-[10px] text-gray-500 mt-1 truncate max-w-[100px]">Belum
+                                    ada foto</span>
+                            </div>
+                            <!-- Slot 3 -->
+                            <div id="slotContainer2"
+                                class="bg-snapPaper/80 border-2 border-dashed border-snapBeige rounded-2xl p-3 text-center flex flex-col items-center justify-center">
+                                <span class="text-xs font-bold text-snapMaroon mb-1">Foto 3 (Bawah)</span>
+                                <input type="file" id="uploadSlot2" accept="image/*" class="hidden"
+                                    onchange="handlePhotoUpload(event, 2)">
+                                <button onclick="document.getElementById('uploadSlot2').click()"
+                                    class="bg-snapMaroon text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm hover:bg-snapRed transition">
+                                    <i class="fa-solid fa-upload mr-1"></i> Pilih Foto
+                                </button>
+                                <span id="fileName2" class="text-[10px] text-gray-500 mt-1 truncate max-w-[100px]">Belum
+                                    ada foto</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-snapPaper">
+
+                    <!-- Step 4: Adjuster Posisi & Zoom -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="font-playfair text-lg font-bold text-snapMaroon flex items-center gap-2">
+                                <span
+                                    class="w-7 h-7 bg-snapMaroon text-white rounded-full flex items-center justify-center text-xs font-sans">4</span>
+                                Atur Posisi & Zoom Foto
+                            </label>
+                            <!-- Selector Slot -->
+                            <select id="activeSlotSelector" onchange="changeActiveSlot(this.value)"
+                                class="text-xs bg-snapMaroon text-white font-bold px-3 py-1.5 rounded-xl outline-none">
+                                <option value="0">Edit Foto 1</option>
+                                <option value="1" id="optionSlot1">Edit Foto 2</option>
+                                <option value="2" id="optionSlot2">Edit Foto 3</option>
+                            </select>
+                        </div>
+
+                        <div class="bg-snapPaper p-4 rounded-2xl border border-snapBeige space-y-3">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-bold text-gray-600 w-20">Zoom:</span>
+                                <input type="range" id="zoomSlider" min="0.5" max="3.0" step="0.05" value="1"
+                                    oninput="updatePhotoZoom(this.value)" class="w-full accent-snapMaroon">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-bold text-gray-600 w-20">Geser X:</span>
+                                <input type="range" id="panXSlider" min="-300" max="300" step="1" value="0"
+                                    oninput="updatePhotoPanX(this.value)" class="w-full accent-snapMaroon">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-bold text-gray-600 w-20">Geser Y:</span>
+                                <input type="range" id="panYSlider" min="-300" max="300" step="1" value="0"
+                                    oninput="updatePhotoPanY(this.value)" class="w-full accent-snapMaroon">
+                            </div>
+                            <!-- Reset button -->
+                            <button onclick="resetCurrentSlot()"
+                                class="w-full text-xs text-snapMaroon font-bold bg-white border border-snapBeige rounded-xl py-2 hover:bg-snapPaper transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-rotate-left"></i> Reset Posisi Foto Ini
+                            </button>
+                        </div>
+                    </div>
+
+                </div><!-- end .left-panel-scroll -->
+            </div>
+
+            <!-- Right Side: Canvas Preview & Download Panel (sticky) -->
+            <div class="lg:col-span-5 flex flex-col items-center lg:sticky lg:top-[76px] lg:self-start">
+                <div
+                    class="bg-white p-6 rounded-3xl border-2 border-snapBeige shadow-2xl w-full max-w-[360px] flex flex-col items-center relative">
+
+                    <!-- Keychain Metallic Ring Graphic Simulation -->
+                    <div class="flex flex-col items-center mb-3">
+                        <div class="w-8 h-8 rounded-full border-4 border-gray-400 shadow-md bg-gray-100"></div>
+                        <div class="w-2.5 h-4 bg-gray-400 rounded-sm -mt-1 shadow-sm"></div>
+                    </div>
+
+                    <!-- Main HTML5 Canvas Frame -->
+                    <div class="relative overflow-hidden rounded-2xl shadow-lg bg-gray-50 border border-gray-200">
+                        <canvas id="previewCanvas" width="320" height="760" class="block max-w-full h-auto"></canvas>
+                    </div>
+
+                    <!-- Download Button Section -->
+                    <div class="w-full mt-6 space-y-2">
+                        <button onclick="downloadPreviewPNG()"
+                            class="w-full bg-snapMaroon hover:bg-snapRed text-snapCream font-fredoka py-3.5 rounded-2xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 text-base font-bold border-2 border-snapCrimson">
+                            <i class="fa-solid fa-download text-yellow-300"></i> Download Preview PNG
+                        </button>
+                        <p class="text-[11px] text-gray-500 text-center font-medium">
+                            Kirimkan file gambar yang diunduh ke admin SnapChain untuk langsung diproses cetak!
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center mt-12 text-xs text-snapDark/70 font-medium">
+        <p>© 2026 SnapChain (Kelompok B.T). All rights reserved.</p>
+    </footer>
+
+    <script>
+        // ============================================================
+        // CANVAS SETUP
+        // ============================================================
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const CANVAS_W = 600;
+        const CANVAS_H_STRIP = 1800;
+        const CANVAS_H_TAG = 900;
+
+        // Ukuran kanvas produk non-photostrip mengikuti rasio asli PNG frame.
+        // Resolusi dibatasi agar hasil tetap tajam tanpa membuat kanvas terlalu besar.
+        function setCanvasSizeForFrame(frameImg) {
+            if (!frameImg || !frameImg.naturalWidth || !frameImg.naturalHeight) return;
+
+            const maxDimension = 1200;
+            const scale = maxDimension / Math.max(frameImg.naturalWidth, frameImg.naturalHeight);
+            canvas.width = Math.max(1, Math.round(frameImg.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(frameImg.naturalHeight * scale));
+        }
+
+        // ============================================================
+        // DEFAULT SLOT POSITIONS (fallback when no frame / detection fails)
+        // ============================================================
+        const DEFAULT_STRIP_SLOTS = [
+            { x: 0, y: 0, w: 600, h: 600 },
+            { x: 0, y: 600, w: 600, h: 600 },
+            { x: 0, y: 1200, w: 600, h: 600 },
+        ];
+
+        const DEFAULT_TAG_SLOT = { x: 0, y: 0, w: 600, h: 750 };
+
+        // ============================================================
+        // APPLICATION STATE
+        // ============================================================
+        let currentMode = 'photostrip';
+        let activeSlotIndex = 0;
+
+        // Frame state
+        let customFrameImage = null;
+        let selectedFrameImage = null;
+        let selectedFrameName = '';
+
+        // Auto-detected slots from current frame
+        let currentDetectedSlots = null;
+        let frameSlotCache = new Map();
+
+        // Frame gallery state
+        let allFramesStrip = [];
+        let allFramesTag = [];
+        let allFramesMotorcycle = [];
+        let allFramesCamera = [];
+        let allFramesMacrame = [];
+        let allFramesPlasbag = [];
+        let allFramesTV = [];
+
+        // Photo slots
+        const slots = [
+            { img: null, zoom: 1, panX: 0, panY: 0 },
+            { img: null, zoom: 1, panX: 0, panY: 0 },
+            { img: null, zoom: 1, panX: 0, panY: 0 }
+        ];
+
+        // ============================================================
+        // FRAME FILE LISTS
+        // ============================================================
+        const FRAME_FILES_STRIP = [
+            "Macaron.png",
+            "Bear Ribbon.png",
+            "Ribbon Cherry2.png",
+            "Happy Valentine Days.png",
+            "Ribbon Cherry1.png",
+            "Ribbon Rabbit.png",
+            "Two Stars.png",
+            "Star Love.png",
+            "Love Star.png",
+            "Cloud Thunderbolt.png",
+            "Good Vibes.png",
+            "Sunshine.png",
+            "Emot Star.png",
+            "Flower Stars.png",
+            "Flower Egg.png",
+            "Stars Cupcake.png",
+            "Blue Coquette Rainbow.png",
+            "Blue Coquette Loves.png",
+            "Green Sunny.png",
+            "Blue Saturnus Candy.png",
+            "Green Crown.png",
+            "Earth.png",
+            "Three Stars.png",
+            "Purple Jupiter Musical.png",
+            "Purple Moon Stars.png",
+            "Purple Lamp.png",
+            "Purple Cloudy.png",
+            "The Smith Black.png",
+            "The Smith White.png",
+            "Black Kodak.png",
+            "White Kodak.png",
+            "Red Soda Flower.png",
+            "Brown Sugar.png",
+            "Pink Sugar.png",
+            "Cinema Ticket.png",
+            "Red Chao Miss.png",
+            "Pink Chao Miss.png",
+            "Hello Beautiful.png",
+            "Shopping Cart.png",
+            "Scrapbook Retro Academia.png",
+            "Black I Love You.png",
+            "Red Party Aesthetic.png",
+            "This Moment Blue.png",
+            "This Moment Pink.png",
+            "Retro TV.png",
+            "White A Potret Of You.png",
+        ];
+
+        const FRAME_FILES_TAG = [
+            "phototag_1.png",
+            "phototag_2.png",
+            "phototag_3.png",
+            "phototag_4.png",
+            "phototag_5.png",
+            "phototag_6.png",
+            "phototag_7.png",
+        ];
+
+        const FRAME_FILES_MOTORCYCLE = [
+            "PhotoMotorcycle_1.png",
+            "PhotoMotorcycle_2.png",
+            "PhotoMotorcycle_3.png",
+            "PhotoMotorcycle_4.png",
+        ];
+
+        const FRAME_FILES_CAMERA = [
+            "PhotoCamera1.png",
+            "PhotoCamera2.png",
+            "PhotoCamera3.png",
+            "PhotoCamera4.png",
+            "PhotoCamera5.png",
+        ];
+
+        const FRAME_FILES_MACRAME = [
+            "PhotoMacrame_0.png",
+            "PhotoMacrame_1.png",
+            "PhotoMacrame_2.png",
+            "PhotoMacrame_3.png",
+        ];
+
+        const FRAME_FILES_PLASBAG = [
+            "The Only Love.png",
+            "My Little World.png",
+            "Photo Dump.png",
+        ];
+
+        const FRAME_FILES_TV = [
+            "PhotoTV0.png",    
+            "PhotoTV1.png",
+            "PhotoTV2.png",
+            "PhotoTV3.png",
+            "PhotoTV4.png",
+        ];
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        window.onload = function () {
+            canvas.width = CANVAS_W;
+            canvas.height = CANVAS_H_STRIP;
+            loadDefaultPlaceholders();
+            loadFrameGallery('photostrip');
+            loadFrameGallery('phototag');
+            loadFrameGallery('motorcycle');
+            loadFrameGallery('camera');
+            loadFrameGallery('macrame');
+            loadFrameGallery('plasbag');
+            loadFrameGallery('tv');
+            renderCanvas();
+
+        };
+
+        function loadDefaultPlaceholders() {
+            for (let i = 0; i < 3; i++) {
+                const tmpCanvas = document.createElement('canvas');
+                tmpCanvas.width = 600;
+                tmpCanvas.height = 600;
+                const tmpCtx = tmpCanvas.getContext('2d');
+                tmpCtx.fillStyle = '#70111A';
+                tmpCtx.fillRect(0, 0, 600, 600);
+                tmpCtx.fillStyle = '#FAF0E6';
+                tmpCtx.font = 'bold 48px Plus Jakarta Sans, sans-serif';
+                tmpCtx.textAlign = 'center';
+                tmpCtx.textBaseline = 'middle';
+                tmpCtx.fillText(`Foto ${i + 1}`, 300, 300);
+                const img = new Image();
+                img.onload = () => { slots[i].img = img; renderCanvas(); };
+                img.src = tmpCanvas.toDataURL();
+            }
+        }
+
+        // ============================================================
+        // AUTO-DETECT PHOTO SLOTS FROM FRAME PNG TRANSPARENCY
+        // Analyzes the frame image to find transparent rectangular
+        // regions where photos should be placed.
+        // ============================================================
+        function detectPhotoSlots(frameImg) {
+            try {
+                const canvasW = canvas.width;
+                const canvasH = canvas.height;
+
+                // Check cache
+                const cacheKey = (frameImg.src || 'custom') + '_' + canvasW + 'x' + canvasH;
+                if (frameSlotCache.has(cacheKey)) {
+                    return frameSlotCache.get(cacheKey);
+                }
+
+                // Draw frame onto temp canvas at canvas dimensions
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvasW;
+                tempCanvas.height = canvasH;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(frameImg, 0, 0, canvasW, canvasH);
+
+                const imageData = tempCtx.getImageData(0, 0, canvasW, canvasH);
+                const data = imageData.data;
+                const alphaThreshold = 40;
+
+
+// Deteksi area transparan berbentuk bebas/persegi panjang
+// Khusus produk selain photostrip.
+if (currentMode !== 'photostrip') {
+    const totalPixels = canvasW * canvasH;
+    const visited = new Uint8Array(totalPixels);
+    const stack = new Int32Array(totalPixels);
+
+    let bestSlot = null;
+    let bestArea = 0;
+
+    for (let start = 0; start < totalPixels; start++) {
+        const alpha = data[start * 4 + 3];
+
+        if (alpha >= alphaThreshold || visited[start]) continue;
+
+        let top = canvasH;
+        let bottom = -1;
+        let left = canvasW;
+        let right = -1;
+        let touchesEdge = false;
+
+        let stackSize = 0;
+        stack[stackSize++] = start;
+        visited[start] = 1;
+
+        while (stackSize > 0) {
+            const pos = stack[--stackSize];
+            const x = pos % canvasW;
+            const y = Math.floor(pos / canvasW);
+
+            left = Math.min(left, x);
+            right = Math.max(right, x);
+            top = Math.min(top, y);
+            bottom = Math.max(bottom, y);
+
+            if (
+                x === 0 || x === canvasW - 1 ||
+                y === 0 || y === canvasH - 1
+            ) {
+                touchesEdge = true;
+            }
+
+            const neighbors = [
+                x > 0 ? pos - 1 : -1,
+                x < canvasW - 1 ? pos + 1 : -1,
+                y > 0 ? pos - canvasW : -1,
+                y < canvasH - 1 ? pos + canvasW : -1
+            ];
+
+            for (const next of neighbors) {
+                if (next < 0 || visited[next]) continue;
+
+                if (data[next * 4 + 3] < alphaThreshold) {
+                    visited[next] = 1;
+                    stack[stackSize++] = next;
+                }
+            }
+        }
+
+        const area = (right - left + 1) * (bottom - top + 1);
+
+        // Abaikan transparansi yang terhubung dengan bagian luar frame.
+        if (!touchesEdge && area > bestArea) {
+            bestArea = area;
+            bestSlot = {
+                x: left,
+                y: top,
+                w: right - left + 1,
+                h: bottom - top + 1
+            };
+        }
+    }
+
+    const result = bestSlot ? [bestSlot] : null;
+    frameSlotCache.set(cacheKey, result);
+    return result;
+}
+
+
+                // Step 1: For each row, check if center portion is mostly transparent
+                const rowIsTransparent = new Array(canvasH);
+                const sampleStartX = Math.floor(canvasW * 0.2);
+                const sampleEndX = Math.floor(canvasW * 0.8);
+
+                for (let y = 0; y < canvasH; y++) {
+                    let transparentCount = 0;
+                    let totalSampled = 0;
+                    for (let x = sampleStartX; x < sampleEndX; x += 3) {
+                        const idx = (y * canvasW + x) * 4;
+                        if (data[idx + 3] < alphaThreshold) {
+                            transparentCount++;
+                        }
+                        totalSampled++;
+                    }
+                    rowIsTransparent[y] = totalSampled > 0 && (transparentCount / totalSampled) > 0.5;
+                }
+
+                // Step 2: Find continuous bands of transparent rows
+                const bands = [];
+                let inBand = false;
+                let bandStart = 0;
+
+                for (let y = 0; y < canvasH; y++) {
+                    if (rowIsTransparent[y]) {
+                        if (!inBand) { bandStart = y; inBand = true; }
+                    } else {
+                        if (inBand) {
+                            bands.push({ y: bandStart, h: y - bandStart });
+                            inBand = false;
+                        }
+                    }
+                }
+                if (inBand) bands.push({ y: bandStart, h: canvasH - bandStart });
+
+                // Step 3: Filter out small bands (noise, decorative transparency)
+                const minBandHeight = canvasH * 0.07;
+                const validBands = bands.filter(b => b.h >= minBandHeight);
+
+                if (validBands.length === 0) {
+                    frameSlotCache.set(cacheKey, null);
+                    return null;
+                }
+
+                // Step 4: For each band, detect the horizontal extent of transparency
+                const detectedSlots = validBands.map(band => {
+                    let minX = canvasW, maxX = 0;
+
+                    // Sample several rows evenly spaced within the band
+                    const numSamples = Math.min(12, Math.max(3, Math.floor(band.h / 20)));
+                    for (let i = 0; i < numSamples; i++) {
+                        const sy = band.y + Math.floor(band.h * (i + 0.5) / numSamples);
+                        if (sy >= canvasH) continue;
+
+                        for (let x = 0; x < canvasW; x++) {
+                            const idx = (sy * canvasW + x) * 4;
+                            if (data[idx + 3] < alphaThreshold) {
+                                if (x < minX) minX = x;
+                                if (x > maxX) maxX = x;
+                            }
+                        }
+                    }
+
+                    return {
+                        x: Math.max(0, minX),
+                        y: band.y,
+                        w: Math.min(canvasW, maxX - minX + 1),
+                        h: band.h
+                    };
+                });
+
+                // Filter out very narrow slots (< 15% of canvas width)
+                const minSlotWidth = canvasW * 0.15;
+                const finalSlots = detectedSlots.filter(s => s.w >= minSlotWidth);
+
+                const result = finalSlots.length > 0 ? finalSlots : null;
+                frameSlotCache.set(cacheKey, result);
+                return result;
+
+            } catch (e) {
+                console.warn('Slot detection failed (CORS or other issue):', e.message);
+                return null;
+            }
+        }
+
+        // ============================================================
+        // GET CURRENT ACTIVE SLOTS (detected or default)
+        // ============================================================
+        function getCurrentSlots() {
+            if (currentMode === 'photostrip') {
+                if (currentDetectedSlots && currentDetectedSlots.length >= 1) {
+                    return currentDetectedSlots;
+                }
+                return DEFAULT_STRIP_SLOTS;
+            } else {
+                if (currentDetectedSlots && currentDetectedSlots.length >= 1) {
+                    return [currentDetectedSlots[0]];
+                }
+                return [DEFAULT_TAG_SLOT];
+            }
+        }
+
+        // Apply detected slots when frame is selected
+        function applyDetectedSlots(frameImg) {
+            currentDetectedSlots = detectPhotoSlots(frameImg);
+
+            const badge = document.getElementById('slotsDetectedBadge');
+            const badgeText = document.getElementById('slotsDetectedText');
+
+            if (currentDetectedSlots) {
+                badge.classList.remove('hidden', 'warn');
+                const count = currentDetectedSlots.length;
+                const expected = currentMode === 'photostrip' ? 3 : 1;
+
+                if (count === expected) {
+                    badgeText.textContent = `${count} area foto`;
+                    badge.classList.remove('warn');
+                } else {
+                    badgeText.textContent = `${count} area foto`;
+                    badge.classList.add('warn');
+                }
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // ============================================================
+        // FRAME GALLERY LOADER
+        // ============================================================
+        function loadFrameGallery(mode) {
+            const modeMap = {
+                'photostrip': { files: FRAME_FILES_STRIP, folder: 'frames/', target: allFramesStrip },
+                'phototag': { files: FRAME_FILES_TAG, folder: 'frames_phototag/', target: allFramesTag },
+                'motorcycle': { files: FRAME_FILES_MOTORCYCLE, folder: 'Frame_Motorcyle/', target: allFramesMotorcycle },
+                'camera': { files: FRAME_FILES_CAMERA, folder: 'Frame_PhotoCamera/', target: allFramesCamera },
+                'macrame': { files: FRAME_FILES_MACRAME, folder: 'Frame_PhotoMacrame/', target: allFramesMacrame },
+                'plasbag': { files: FRAME_FILES_PLASBAG, folder: 'Frame_PhotoPlasbag/', target: allFramesPlasbag },
+                'tv': { files: FRAME_FILES_TV, folder: 'Frame_PhotoTV/', target: allFramesTV },
+            };
+            const cfg = modeMap[mode];
+            if (!cfg) return;
+            const fileList = cfg.files;
+            const folderPath = cfg.folder;
+            const targetArr = cfg.target;
+
+            if (fileList.length === 0) {
+                if (mode === currentMode) showFrameEmptyState();
+                return;
+            }
+
+            let loadedCount = 0;
+            fileList.forEach((filename, idx) => {
+                const imgEl = new Image();
+                const framePath = `${folderPath}${filename}`;
+
+                imgEl.onload = function () {
+                    targetArr.push({
+                        name: filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+                        filename,
+                        path: framePath,
+                        img: imgEl,
+                        idx
+                    });
+                    loadedCount++;
+                    if (loadedCount === fileList.length) {
+                        targetArr.sort((a, b) => a.idx - b.idx);
+                        if (mode === currentMode) showFrameGallery(targetArr);
+                    }
+                };
+
+                imgEl.onerror = function () {
+                    console.warn(`Gagal load frame: ${framePath}`);
+                    loadedCount++;
+                    if (loadedCount === fileList.length) {
+                        targetArr.sort((a, b) => a.idx - b.idx);
+                        if (mode === currentMode) showFrameGallery(targetArr);
+                    }
+                };
+
+                imgEl.src = framePath;
+            });
+        }
+
+        function showFrameGallery(frames) {
+            const loading = document.getElementById('frameLoadingState');
+            const grid = document.getElementById('frameGridContainer');
+            const empty = document.getElementById('frameEmptyState');
+            const countBadge = document.getElementById('frameCountBadge');
+            const countText = document.getElementById('frameCountText');
+
+            loading.classList.add('hidden');
+
+            if (!frames || frames.length === 0) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+                countBadge.classList.add('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            countBadge.classList.remove('hidden');
+            countText.textContent = frames.length;
+            renderFrameGrid(frames);
+            grid.classList.remove('hidden');
+        }
+
+        function renderFrameGrid(frames) {
+    const grid = document.getElementById('frameGridContainer');
+    const noResult = document.getElementById('frameNoResultState');
+    grid.classList.add('items-start');
+    grid.innerHTML = '';
+
+    if (frames.length === 0) {
+        noResult.classList.remove('hidden');
+        return;
+    }
+    noResult.classList.add('hidden');
+
+    frames.forEach(frame => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'frame-thumb-btn' + (selectedFrameName === frame.filename ? ' active' : '');
+        btn.id = `frameBtn_${frame.filename.replace(/[^a-z0-9]/gi, '_')}`;
+        btn.onclick = () => selectFrameFromGallery(frame);
+        btn.title = frame.name;
+
+        const img = document.createElement('img');
+        img.src = frame.path;
+        img.alt = frame.name;
+
+        const label = document.createElement('div');
+        label.className = 'frame-thumb-label';
+        label.textContent = frame.name;
+
+        btn.appendChild(img);
+        btn.appendChild(label);
+        grid.appendChild(btn);
+    });
+}
+
+        function selectFrameFromGallery(frame) {
+            selectedFrameImage = frame.img;
+            selectedFrameName = frame.filename;
+            customFrameImage = null;
+
+            document.querySelectorAll('.frame-thumb-btn').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.getElementById(`frameBtn_${frame.filename.replace(/[^a-z0-9]/gi, '_')}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const infoBar = document.getElementById('frameInfoBar');
+            const infoName = document.getElementById('frameInfoName');
+            infoBar.classList.remove('hidden');
+            infoName.textContent = frame.name;
+
+            // Photostrip tetap memakai kanvas vertikal; produk lain mengikuti rasio PNG frame.
+            if (currentMode === 'photostrip') {
+                canvas.width = CANVAS_W;
+                canvas.height = CANVAS_H_STRIP;
+            } else {
+                setCanvasSizeForFrame(frame.img);
+            }
+
+            // Deteksi slot dilakukan setelah ukuran kanvas disesuaikan.
+            applyDetectedSlots(frame.img);
+
+            renderCanvas();
+
+        }
+
+        function clearFrameSelection() {
+            selectedFrameImage = null;
+            selectedFrameName = '';
+            customFrameImage = null;
+            currentDetectedSlots = null;
+
+            document.querySelectorAll('.frame-thumb-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('frameInfoBar').classList.add('hidden');
+            document.getElementById('slotsDetectedBadge').classList.add('hidden');
+
+            renderCanvas();
+
+        }
+
+        function filterFrames(query) {
+            const clearBtn = document.getElementById('clearSearchBtn');
+            clearBtn.classList.toggle('hidden', !query.trim());
+            const src = currentMode === 'photostrip' ? allFramesStrip : allFramesTag;
+            const q = query.toLowerCase().trim();
+            const results = q ? src.filter(f => f.name.toLowerCase().includes(q) || f.filename.toLowerCase().includes(q)) : src;
+            renderFrameGrid(results);
+        }
+
+        function clearFrameSearch() {
+            const input = document.getElementById('frameSearchInput');
+            input.value = '';
+            filterFrames('');
+            input.focus();
+        }
+
+        function showFrameEmptyState() {
+            document.getElementById('frameLoadingState').classList.add('hidden');
+            document.getElementById('frameGridContainer').classList.add('hidden');
+            document.getElementById('frameEmptyState').classList.remove('hidden');
+        }
+
+        // ============================================================
+        // PRODUCT MODE TOGGLE
+        // ============================================================
+        function setProductMode(mode) {
+            currentMode = mode;
+
+            // All mode buttons
+            const allBtns = {
+                'photostrip': 'btnModePhotostrip',
+                'phototag': 'btnModePhotoTag',
+                'motorcycle': 'btnModeMotorcycle',
+                'camera': 'btnModeCamera',
+                'macrame': 'btnModeMacrame',
+                'plasbag': 'btnModePlasbag',
+                'tv': 'btnModeTV'
+            };
+
+            // Reset all buttons to inactive
+            Object.values(allBtns).forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.classList.remove('border-snapMaroon', 'bg-snapPaper');
+                    btn.classList.add('border-gray-200', 'bg-white');
+                    const nameSpan = btn.querySelector('.font-fredoka');
+                    if (nameSpan) {
+                        nameSpan.classList.remove('text-snapMaroon');
+                        nameSpan.classList.add('text-gray-700');
+                    }
+                }
+            });
+
+            // Set active button
+            const activeId = allBtns[mode];
+            if (activeId) {
+                const btn = document.getElementById(activeId);
+                if (btn) {
+                    btn.classList.remove('border-gray-200', 'bg-white');
+                    btn.classList.add('border-snapMaroon', 'bg-snapPaper');
+                    const nameSpan = btn.querySelector('.font-fredoka');
+                    if (nameSpan) {
+                        nameSpan.classList.remove('text-gray-700');
+                        nameSpan.classList.add('text-snapMaroon');
+                    }
+                }
+            }
+
+            const slot1 = document.getElementById('slotContainer1');
+            const slot2 = document.getElementById('slotContainer2');
+            const opt1 = document.getElementById('optionSlot1');
+            const opt2 = document.getElementById('optionSlot2');
+
+            // Reset frame selection & detected slots
+            clearFrameSelection();
+
+            if (mode === 'photostrip') {
+                slot1.classList.remove('hidden');
+                slot2.classList.remove('hidden');
+                opt1.disabled = false;
+                opt2.disabled = false;
+                canvas.width = CANVAS_W;
+                canvas.height = CANVAS_H_STRIP;
+                showFrameGallery(allFramesStrip);
+            } else {
+                slot1.classList.add('hidden');
+                slot2.classList.add('hidden');
+                opt1.disabled = true;
+                opt2.disabled = true;
+                document.getElementById('activeSlotSelector').value = "0";
+                activeSlotIndex = 0;
+                // Ukuran awal horizontal; akan disesuaikan persis saat frame dipilih.
+                canvas.width = 900;
+                canvas.height = 600;
+
+                const galleryMap = {
+                    'phototag': allFramesTag,
+                    'motorcycle': allFramesMotorcycle,
+                    'camera': allFramesCamera,
+                    'macrame': allFramesMacrame,
+                    'plasbag': allFramesPlasbag,
+                    'tv': allFramesTV
+                };
+                showFrameGallery(galleryMap[mode] || []);
+            }
+
+            renderCanvas();
+
+            const macrameInfo = document.getElementById('macrameRandomInfo');
+if (macrameInfo) {
+    macrameInfo.classList.toggle('hidden', mode !== 'macrame');
+}
+
+const phototagInfo = document.getElementById('phototagCustomInfo');
+if (phototagInfo) {
+    phototagInfo.classList.toggle('hidden', mode !== 'phototag');
+}
+
+const tvInfo = document.getElementById('tvFixedInfo');
+if (tvInfo) {
+    tvInfo.classList.toggle('hidden', mode !== 'tv');
+}
+
+const cameraInfo = document.getElementById('cameraFixedInfo');
+if (cameraInfo) {
+    cameraInfo.classList.toggle('hidden', mode !== 'camera');
+}
+        }
+
+        // ============================================================
+        // CUSTOM FRAME UPLOAD
+        // ============================================================
+        function handleCustomFrameUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    customFrameImage = img;
+                    selectedFrameImage = null;
+                    selectedFrameName = '';
+                    document.querySelectorAll('.frame-thumb-btn').forEach(b => b.classList.remove('active'));
+                    const infoBar = document.getElementById('frameInfoBar');
+                    const infoName = document.getElementById('frameInfoName');
+                    infoBar.classList.remove('hidden');
+                    infoName.textContent = `Custom: ${file.name}`;
+
+                    // Sesuaikan kanvas dengan rasio PNG custom sebelum mendeteksi slot foto.
+                    if (currentMode === 'photostrip') {
+                        canvas.width = CANVAS_W;
+                        canvas.height = CANVAS_H_STRIP;
+                    } else {
+                        setCanvasSizeForFrame(img);
+                    }
+
+                    // Auto-detect slots from custom frame
+                    applyDetectedSlots(img);
+
+                    renderCanvas();
+
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ============================================================
+        // PHOTO UPLOAD PER SLOT
+        // ============================================================
+        function handlePhotoUpload(event, slotIndex) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById(`fileName${slotIndex}`).innerText = file.name;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    slots[slotIndex].img = img;
+                    slots[slotIndex].zoom = 1;
+                    slots[slotIndex].panX = 0;
+                    slots[slotIndex].panY = 0;
+                    if (slotIndex === activeSlotIndex) resetSlidersUI();
+                    renderCanvas();
+
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function changeActiveSlot(val) {
+            activeSlotIndex = parseInt(val);
+            const slot = slots[activeSlotIndex];
+            document.getElementById('zoomSlider').value = slot.zoom;
+            document.getElementById('panXSlider').value = slot.panX;
+            document.getElementById('panYSlider').value = slot.panY;
+
+
+        }
+
+        function resetSlidersUI() {
+            document.getElementById('zoomSlider').value = 1;
+            document.getElementById('panXSlider').value = 0;
+            document.getElementById('panYSlider').value = 0;
+        }
+
+        function resetCurrentSlot() {
+            slots[activeSlotIndex].zoom = 1;
+            slots[activeSlotIndex].panX = 0;
+            slots[activeSlotIndex].panY = 0;
+            resetSlidersUI();
+            renderCanvas();
+
+        }
+
+        function updatePhotoZoom(val) { slots[activeSlotIndex].zoom = parseFloat(val); renderCanvas(); }
+        function updatePhotoPanX(val) { slots[activeSlotIndex].panX = parseFloat(val); renderCanvas(); }
+        function updatePhotoPanY(val) { slots[activeSlotIndex].panY = parseFloat(val); renderCanvas(); }
+
+        // ============================================================
+        // MAIN CANVAS RENDERER
+        // ============================================================
+        function renderCanvas() {
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            if (currentMode === 'photostrip') {
+                renderPhotostrip(w, h);
+            } else {
+                renderPhotoTag(w, h);
+            }
+        }
+
+        function renderPhotostrip(w, h) {
+            // White background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, w, h);
+
+            // Default background when no frame is selected
+            if (!customFrameImage && !selectedFrameImage) {
+                ctx.fillStyle = '#70111A';
+                ctx.fillRect(0, 0, w, h);
+                ctx.strokeStyle = '#FAF0E6';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([12, 12]);
+                ctx.strokeRect(18, 18, w - 36, h - 36);
+                ctx.setLineDash([]);
+            }
+
+            // Use detected slots or fallback to defaults
+            const activeSlots = getCurrentSlots();
+
+            // Draw photo in each slot
+            activeSlots.forEach((slotRect, i) => {
+                if (i < slots.length) {
+                    drawPhoto(slots[i], slotRect.x, slotRect.y, slotRect.w, slotRect.h);
+                }
+            });
+
+            // Overlay frame on top — frame PNG covers everything outside transparent cutouts
+            const overlay = customFrameImage || selectedFrameImage;
+            if (overlay) {
+                ctx.drawImage(overlay, 0, 0, w, h);
+            }
+        }
+
+        function renderPhotoTag(w, h) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, w, h);
+
+            if (!customFrameImage && !selectedFrameImage) {
+                ctx.fillStyle = '#70111A';
+                ctx.fillRect(0, 0, w, h);
+            }
+
+            const activeSlots = getCurrentSlots();
+            drawPhoto(slots[0], activeSlots[0].x, activeSlots[0].y, activeSlots[0].w, activeSlots[0].h);
+
+            const overlay = customFrameImage || selectedFrameImage;
+            if (overlay) {
+                ctx.drawImage(overlay, 0, 0, w, h);
+            }
+        }
+
+        // ============================================================
+        // DRAW SINGLE PHOTO INTO SLOT
+        // Cover-fit: foto mengisi penuh area slot tanpa distorsi
+        // ============================================================
+        function drawPhoto(slot, x, y, w, h) {
+            ctx.save();
+
+            // Clip to slot area
+            ctx.beginPath();
+            ctx.rect(x, y, w, h);
+            ctx.clip();
+
+            // Background when no photo
+            ctx.fillStyle = '#D1D5DB';
+            ctx.fillRect(x, y, w, h);
+
+            if (slot && slot.img) {
+                const img = slot.img;
+
+                // Cover-fit: scale photo to fill slot completely
+                const scaleBase = Math.max(w / img.width, h / img.height);
+                const scale = scaleBase * slot.zoom;
+
+                const drawW = img.width * scale;
+                const drawH = img.height * scale;
+
+                // Center + user pan offset
+                const drawX = x + (w - drawW) / 2 + slot.panX;
+                const drawY = y + (h - drawH) / 2 + slot.panY;
+
+                ctx.drawImage(img, drawX, drawY, drawW, drawH);
+            }
+
+            ctx.restore();
+        }
+
+
+
+        // ============================================================
+        // DOWNLOAD
+        // ============================================================
+        function downloadPreviewPNG() {
+            try {
+                const dataURL = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = `SnapChain-Preview-${Date.now()}.png`;
+                link.href = dataURL;
+                link.click();
+            } catch (e) {
+                console.error('Download error:', e);
+                alert('Gagal download: Pastikan foto yang diupload berasal dari perangkat kamu (bukan dari URL eksternal). Coba upload ulang fotonya, lalu download lagi.');
+            }
+        }
+    </script>
+</body>
+
+</html>
